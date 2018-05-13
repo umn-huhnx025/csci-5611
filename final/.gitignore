@@ -1,0 +1,16 @@
+final
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+*.dSYM
+*.build
+*.xcodeproj
+.vs/
+VS2017/
+src/include/config.h

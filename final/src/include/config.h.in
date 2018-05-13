@@ -1,0 +1,6 @@
+#pragma once
+#include <string>
+
+static const std::string SHADER_DIR = "@SHADER_DIR@";
+static const std::string MODEL_DIR = "@MODEL_DIR@";
+static const std::string TEXTURE_DIR = "@TEXTURE_DIR@";
