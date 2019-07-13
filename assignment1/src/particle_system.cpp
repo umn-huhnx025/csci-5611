@@ -2,27 +2,23 @@
 
 #include <cmath>
 #include <cstdio>
-#include <cstring>
 #include <iostream>
-
-// #include <glm/gtc/type_ptr.hpp>
 
 // Library to load obj files
 // https://github.com/syoyo/tinyobjloader
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
-const glm::vec3 ParticleSystem::GRAVITY(0, -9.8, 0);
+const glm::vec3 ParticleSystem::GRAVITY(0, 0, -9.8);
 
 ParticleSystem::ParticleSystem(int numParticles_, const char* modelFile)
-    : spawnRate(numParticles_ / 10.),
+    : numParticles(0),
+      maxParticles(numParticles_),
+      spawnRate(numParticles_ / 10.),
       spawnError(0.),
       modelScale(glm::vec3(1, 1, 1) * 0.015f),
       maxAge(3.),
-      radius(0.01),
-      maxParticles(numParticles_),
-      numParticles(0),
-      data(new float[3 * maxParticles]) {
+      modelRadius(1.) {
   positions = new glm::vec3[maxParticles];
   colors = new glm::vec3[maxParticles];
   velocities = new glm::vec3[maxParticles];
@@ -51,13 +47,12 @@ void ParticleSystem::update(float dt) {
     velocities[i] += GRAVITY * dt;
     positions[i] += velocities[i] * dt;
 
-    if (positions[i].z < radius) {
-      positions[i].z = radius;
+    if (positions[i].z < modelRadius) {
+      positions[i].z = modelRadius;
       velocities[i].z *= -1;
     }
   }
   spawnNewParticles(dt);
-  updatePosData();
 }
 
 void ParticleSystem::newParticle(int i) {
@@ -147,18 +142,4 @@ std::vector<tinyobj::real_t> ParticleSystem::loadModel(const char* filename) {
     }
   }
   return model;
-}
-
-void ParticleSystem::updatePosData() {
-  // memset(data, 0, 3 * maxParticles * sizeof(*data));
-  for (int i = 0; i < numParticles; i++) {
-    data[3 * i + 0] = positions[i].x;
-    data[3 * i + 1] = positions[i].y;
-    data[3 * i + 2] = positions[i].z;
-  }
-
-  // for (int i = 0; i < 3 * numParticles; i++) {
-  //   printf("data[%d] = %f\n", i, data[i]);
-  // }
-  // printf("\n");
 }

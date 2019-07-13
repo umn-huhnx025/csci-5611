@@ -10,18 +10,14 @@
 Camera::Camera(glm::vec3 pos_, glm::vec3 target_, glm::vec3 worldUp_)
     : pos(pos_),
       worldUp(worldUp_),
+      pitch(-0.17),
+      yaw(3.14159 / 4.),
       fov(3.14159 / 6.),
       target(target_),
-      moveSensitivity(5),
+      moveSpeed(0.05),
       lookSpeed(0.5),
       mouseLook(SDL_FALSE),
       mouseSensitivity(1 / 500.) {
-  double x = target.x - pos.x;
-  double y = target.y - pos.y;
-  double z = target.z - pos.z;
-  double xyz = glm::length(target - pos);
-  pitch = std::asin(y / xyz);
-  yaw = std::atan(z / x);
   front = glm::normalize(target - pos);
   direction = -front;
   right = glm::normalize(glm::cross(worldUp, direction));
@@ -46,10 +42,10 @@ void Camera::processMovement(const Uint8* keyState, float delta) {
     pitch -= my;
   } else {
     if (keyState[SDL_SCANCODE_LEFT]) {
-      yaw -= lookSpeed * delta;
+      yaw += lookSpeed * delta;
     }
     if (keyState[SDL_SCANCODE_RIGHT]) {
-      yaw += lookSpeed * delta;
+      yaw -= lookSpeed * delta;
     }
     if (keyState[SDL_SCANCODE_UP]) {
       pitch += lookSpeed * delta;
@@ -64,13 +60,13 @@ void Camera::processMovement(const Uint8* keyState, float delta) {
 
   glm::vec3 mewFront;
   mewFront.x = std::cos(pitch) * std::cos(yaw);
-  mewFront.y = std::sin(pitch);
-  mewFront.z = std::cos(pitch) * std::sin(yaw);
+  mewFront.y = std::cos(pitch) * std::sin(yaw);
+  mewFront.z = std::sin(pitch);
   front = glm::normalize(mewFront);
   right = glm::normalize(glm::cross(front, worldUp));
   up = glm::normalize(glm::cross(right, front));
 
-  float moveSpeed = moveSensitivity * delta;
+  moveSpeed = 2.5 * delta;
 
   // WASD
   if (keyState[SDL_SCANCODE_W]) {

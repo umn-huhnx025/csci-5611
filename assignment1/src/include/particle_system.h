@@ -17,6 +17,8 @@ class ParticleSystem {
   glm::vec3 *velocities;
   float *lifetimes;
   // float *transparencies;
+  int numParticles;
+  int maxParticles;
   float spawnRate;
 
   // Error rate to carry over when creating new particles
@@ -25,7 +27,7 @@ class ParticleSystem {
   glm::vec3 modelScale;
   float maxAge;
   std::vector<tinyobj::real_t> modelData;
-  float radius;
+  float modelRadius;
 
   static const glm::vec3 GRAVITY;
 
@@ -43,13 +45,7 @@ class ParticleSystem {
 
   virtual void spawnNewParticles(float dt);
 
-  void updatePosData();
-
  public:
-  int maxParticles;
-  int numParticles;
-  float *data;
-
   ParticleSystem(int numParticles_, const char *modelFile);
   virtual ~ParticleSystem();
 

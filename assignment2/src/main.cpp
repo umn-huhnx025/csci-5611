@@ -1,7 +1,7 @@
 #include "glad/glad.h"  //Include order can matter here
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h>
+#include <SDL.h>
+#include <SDL_opengl.h>
 
 #define GLM_FORCE_RADIANS
 #include "glm/glm.hpp"

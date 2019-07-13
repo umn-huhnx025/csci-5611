@@ -1,7 +1,7 @@
 #include "glad/glad.h"  //Include order can matter here
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h>
+#include <SDL.h>
+#include <SDL_opengl.h>
 
 #define GLM_FORCE_RADIANS
 #include "glm/glm.hpp"
@@ -40,43 +40,8 @@ static glm::vec3 contextTranslate = glm::vec3(0, 0, 0);
 static glm::vec3 contextScale = glm::vec3(1, 1, 1);
 static int contextTextureID = -1;
 
-GLuint vao[1];
-GLuint vbo[1];
-int texturedShader;
-
-void drawGeometry(float dt) {
-  glm::mat4 model;
-  glm::vec3 colVec(0.2, 0.3, 0.8);
-  glPointSize(4);
-
-  glBindVertexArray(vao[0]);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
-  glBufferData(GL_ARRAY_BUFFER, particles->numParticles * 3 * sizeof(float),
-               particles->data, GL_STREAM_DRAW);
-
-  glUseProgram(texturedShader);
-
-  GLint uniModel = glGetUniformLocation(texturedShader, "model");
-  GLint uniColor = glGetUniformLocation(texturedShader, "inColor");
-  // GLint uniTexID = glGetUniformLocation(shaderProgram, "texID");
-
-  // Draw context
-  // model = glm::translate(model, contextTranslate);
-  // model = glm::scale(model, contextScale);
-  // glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-
-  // glUniform3fv(uniColor, 1, glm::value_ptr(colVec));
-  // glUniform1i(uniTexID,
-  //             contextTextureID);  // Set texture ID to use (-1 = no texture)
-  // glDrawArrays(GL_TRIANGLES, numVertsParticle, numVertsContext);
-
-  glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-  glUniform3fv(uniColor, 1, glm::value_ptr(colVec));
-
-  glDrawArrays(GL_POINTS, 0, particles->numParticles);
-
-  particles->update(dt);
-}
+void drawGeometry(int shaderProgram, int numVertsParticle, int numVertsContext,
+                  float dt);
 
 int main(int argc, char* argv[]) {
   srand(time(NULL));
@@ -88,7 +53,7 @@ int main(int argc, char* argv[]) {
   // SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 
   // Create a window (offsetx, offsety, width, height, flags)
-  SDL_Window* window = SDL_CreateWindow("Particle System", 0, 0, screenWidth,
+  SDL_Window* window = SDL_CreateWindow("My OpenGL Program", 0, 0, screenWidth,
                                         screenHeight, SDL_WINDOW_OPENGL);
 
   // Create a context to draw in
@@ -116,14 +81,14 @@ int main(int argc, char* argv[]) {
   std::vector<tinyobj::real_t> modelContext;
   if (argc > 1) {
     const char* kind = argv[1];
-    int numParticles = 1000;
+    int numParticles = 10000;
     if (argc > 2) {
       numParticles = atoi(argv[2]);
     }
     if (!strcmp(kind, "water")) {
       particles = new WaterSystem(numParticles);
       modelContext = ParticleSystem::loadModel("models/fountain.obj");
-      contextScale = glm::vec3(2, 4, 2);
+      contextScale = glm::vec3(2, 2, 4);
     } else if (!strcmp(kind, "fire")) {
       particles = new FireSystem(numParticles);
       modelContext = ParticleSystem::loadModel("models/logs.obj");
@@ -154,17 +119,16 @@ int main(int argc, char* argv[]) {
   }
 
   // Load Models
-  // std::vector<tinyobj::real_t> modelParticle = particles->Model();
-  // int numVertsParticle = modelParticle.size() / 8;
+  std::vector<tinyobj::real_t> modelParticle = particles->Model();
+  int numVertsParticle = modelParticle.size() / 8;
 
-  // int numVertsContext = modelContext.size() / 8;
+  int numVertsContext = modelContext.size() / 8;
 
-  // int totalNumVerts = numVertsParticle + numVertsContext;
-  // std::vector<tinyobj::real_t> modelData;
-  // modelData.reserve(modelParticle.size() + modelContext.size());
-  // modelData.insert(modelData.end(), modelParticle.begin(),
-  // modelParticle.end()); modelData.insert(modelData.end(),
-  // modelContext.begin(), modelContext.end());
+  int totalNumVerts = numVertsParticle + numVertsContext;
+  std::vector<tinyobj::real_t> modelData;
+  modelData.reserve(modelParticle.size() + modelContext.size());
+  modelData.insert(modelData.end(), modelParticle.begin(), modelParticle.end());
+  modelData.insert(modelData.end(), modelContext.begin(), modelContext.end());
 
   //// Allocate Texture 0 (Gravel) ///////
   SDL_Surface* surface = SDL_LoadBMP("textures/bark.bmp");
@@ -223,26 +187,43 @@ int main(int argc, char* argv[]) {
 
   // Build a Vertex Array Object. This stores the VBO and attribute mappings in
   // one object
-  glGenVertexArrays(1, vao);  // Create a VAO
-  glBindVertexArray(
-      vao[0]);  // Bind the above created VAO to the current context
+  GLuint vao;
+  glGenVertexArrays(1, &vao);  // Create a VAO
+  glBindVertexArray(vao);  // Bind the above created VAO to the current context
 
   // Allocate memory on the graphics card to store geometry (vertex buffer
   // object)
+  GLuint vbo[1];
   glGenBuffers(1, vbo);                   // Create 1 buffer called vbo
   glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);  // Set the vbo as the active array
                                           // buffer (Only one buffer can be
                                           // active at a time)
+  glBufferData(GL_ARRAY_BUFFER, totalNumVerts * 8 * sizeof(float),
+               &modelData[0],
+               GL_STATIC_DRAW);  // upload vertices to vbo
+  // GL_STATIC_DRAW means we won't change the geometry, GL_DYNAMIC_DRAW =
+  // geometry changes infrequently  GL_STREAM_DRAW = geom. changes frequently.
+  // This effects which types of GPU memory is used
 
-  texturedShader = InitShader("src/shaders/particle_vertex.glsl",
-                              "src/shaders/particle_fragment.glsl");
+  int texturedShader = InitShader("src/shaders/phong_vertex.glsl",
+                                  "src/shaders/phong_fragment.glsl");
 
   // Tell OpenGL how to set fragment shader input
   GLint posAttrib = glGetAttribLocation(texturedShader, "position");
-  glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
+  glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), 0);
   // Attribute, vals/attrib., type, normalized?, stride, offset
   // Binds to VBO current GL_ARRAY_BUFFER
   glEnableVertexAttribArray(posAttrib);
+
+  GLint normAttrib = glGetAttribLocation(texturedShader, "inNormal");
+  glVertexAttribPointer(normAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+                        (void*)(5 * sizeof(float)));
+  glEnableVertexAttribArray(normAttrib);
+
+  GLint texAttrib = glGetAttribLocation(texturedShader, "inTexcoord");
+  glEnableVertexAttribArray(texAttrib);
+  glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+                        (void*)(3 * sizeof(float)));
 
   GLint uniView = glGetUniformLocation(texturedShader, "view");
   GLint uniProj = glGetUniformLocation(texturedShader, "proj");
@@ -251,7 +232,8 @@ int main(int argc, char* argv[]) {
 
   glEnable(GL_DEPTH_TEST);
 
-  cam = new Camera(glm::vec3(0, 1, 4), glm::vec3(0, 1, 0), glm::vec3(0, 1, 0));
+  cam =
+      new Camera(glm::vec3(-8, -8, 2), glm::vec3(0, 0, 0), glm::vec3(0, 0, 1));
 
   // printf("camera: %f %f %f\nview dir: %f %f %f\npitch: %f\nyaw: %f\n",
   // camPos.x,
@@ -282,25 +264,24 @@ int main(int argc, char* argv[]) {
       // List of keycodes: https://wiki.libsdl.org/SDL_Keycode - You can catch
       // many special keys  Scancode referes to a keyboard position, keycode
       // referes to the letter (e.g., EU keyboards)
-      // if (windowEvent.type == SDL_KEYUP &&
-      //     windowEvent.key.keysym.sym == SDLK_ESCAPE)
-      //   SDL_SetRelativeMouseMode(SDL_FALSE);
-      // if (windowEvent.type == SDL_KEYUP &&
-      //     windowEvent.key.keysym.sym == SDLK_f) {
-      //   fullscreen = !fullscreen;
-      //   SDL_SetWindowFullscreen(window, fullscreen ? SDL_WINDOW_FULLSCREEN :
-      //   0);
-      // }
-      // if (windowEvent.type == SDL_KEYUP &&
-      //     windowEvent.key.keysym.sym == SDLK_SPACE) {
-      //   // Add random velocity
-      //   for (int i = 0; i < particles->NumParticles(); i++) {
-      //     glm::vec3 vRand = glm::vec3(3 * rand01() - 1.5, 3 * rand01() - 1.5,
-      //                                 2 + 2 * rand01());
-      //     particles->Velocity(i, particles->Velocity(i) + vRand);
-      //   }
-      // }
-      // cam->processMouseWheel(&windowEvent);
+      if (windowEvent.type == SDL_KEYUP &&
+          windowEvent.key.keysym.sym == SDLK_ESCAPE)
+        SDL_SetRelativeMouseMode(SDL_FALSE);
+      if (windowEvent.type == SDL_KEYUP &&
+          windowEvent.key.keysym.sym == SDLK_f) {
+        fullscreen = !fullscreen;
+        SDL_SetWindowFullscreen(window, fullscreen ? SDL_WINDOW_FULLSCREEN : 0);
+      }
+      if (windowEvent.type == SDL_KEYUP &&
+          windowEvent.key.keysym.sym == SDLK_SPACE) {
+        // Add random velocity
+        for (int i = 0; i < particles->NumParticles(); i++) {
+          glm::vec3 vRand = glm::vec3(3 * rand01() - 1.5, 3 * rand01() - 1.5,
+                                      2 + 2 * rand01());
+          particles->Velocity(i, particles->Velocity(i) + vRand);
+        }
+      }
+      cam->processMouseWheel(&windowEvent);
     }
 
     const Uint8* keyState = SDL_GetKeyboardState(NULL);
@@ -310,6 +291,8 @@ int main(int argc, char* argv[]) {
     glClearColor(0.1, 0.1, 0.1, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    glUseProgram(texturedShader);
+
     glm::mat4 view = cam->getLookAt();
     glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
 
@@ -318,26 +301,26 @@ int main(int argc, char* argv[]) {
                          frustFar);  // FOV, aspect, near, far
     glUniformMatrix4fv(uniProj, 1, GL_FALSE, glm::value_ptr(proj));
 
-    // glActiveTexture(GL_TEXTURE0);
-    // glBindTexture(GL_TEXTURE_2D, tex0);
-    // glUniform1i(glGetUniformLocation(texturedShader, "tex0"), 0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex0);
+    glUniform1i(glGetUniformLocation(texturedShader, "tex0"), 0);
 
-    // glActiveTexture(GL_TEXTURE1);
-    // glBindTexture(GL_TEXTURE_2D, tex1);
-    // glUniform1i(glGetUniformLocation(texturedShader, "tex1"), 1);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, tex1);
+    glUniform1i(glGetUniformLocation(texturedShader, "tex1"), 1);
 
-    drawGeometry(delta);
+    glBindVertexArray(vao);
+
+    drawGeometry(texturedShader, numVertsParticle, numVertsContext, delta);
 
     SDL_GL_SwapWindow(window);  // Double buffering
 
     // FPS Counter
     frame++;
     t1 = SDL_GetTicks();
-    if (t1 - t0 >= 1000) {
-      char buf[100];
-      sprintf(buf, "Particle System | FPS: %.4f\r",
-              frame / ((t1 - t0) / 1000.f));
-      SDL_SetWindowTitle(window, buf);
+    if (t1 - t0 > 1000) {
+      printf("Average Frames Per Second: %.4f\r", frame / ((t1 - t0) / 1000.f));
+      fflush(stdout);
       t0 = t1;
       frame = 0;
     }
@@ -349,11 +332,57 @@ int main(int argc, char* argv[]) {
 
   glDeleteProgram(texturedShader);
   glDeleteBuffers(1, vbo);
-  glDeleteVertexArrays(1, vao);
+  glDeleteVertexArrays(1, &vao);
 
   SDL_GL_DeleteContext(context);
   SDL_Quit();
   return 0;
+}
+
+void drawGeometry(int shaderProgram, int numVertsParticle, int numVertsContext,
+                  float dt) {
+  GLint uniModel = glGetUniformLocation(shaderProgram, "model");
+  GLint uniColor = glGetUniformLocation(shaderProgram, "inColor");
+  GLint uniTexID = glGetUniformLocation(shaderProgram, "texID");
+
+  // Draw context
+  glm::mat4 model;
+  model = glm::translate(model, contextTranslate);
+  model = glm::scale(model, contextScale);
+  glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
+
+  glm::vec3 colVec(0.4, 0.4, 0.4);
+  glUniform3fv(uniColor, 1, glm::value_ptr(colVec));
+  glUniform1i(uniTexID,
+              contextTextureID);  // Set texture ID to use (-1 = no texture)
+  glDrawArrays(GL_TRIANGLES, numVertsParticle, numVertsContext);
+
+  particles->update(dt);
+
+  // Draw particles
+  for (int i = 0; i < particles->NumParticles(); i++) {
+    model = glm::mat4();
+    model = glm::translate(model, particles->Position(i));
+    model = glm::scale(model, particles->Scale());
+
+    // Billboarding
+    model = glm::rotate(model, glm::half_pi<float>() / 2.f, cam->front);
+    model = glm::rotate(model, cam->yaw - glm::half_pi<float>() / 2.f,
+                        cam->worldUp);
+    model = glm::rotate(model, glm::half_pi<float>(), glm::vec3(1, -1, 0));
+
+    glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
+
+    // Use particle color
+    colVec = particles->Color(i);
+    glUniform3fv(uniColor, 1, glm::value_ptr(colVec));
+
+    // Use texture
+    glUniform1i(uniTexID, -2);
+
+    // Draw cube model
+    glDrawArrays(GL_TRIANGLES, 0, numVertsParticle);
+  }
 }
 
 // Create a NULL-terminated string by reading the provided file

@@ -12,18 +12,18 @@ void BallSystem::update(float dt) {
   for (int i = 0; i < numParticles; i++) {
     glm::vec3* p = &positions[i];
     glm::vec3* v = &velocities[i];
-    float xMin = -3 + radius * modelScale.x;
-    float xMax = 3 - radius * modelScale.x;
-    float yMin = -3 + radius * modelScale.y;
-    float yMax = 3 - radius * modelScale.y;
+    float xMin = -3 + modelRadius * modelScale.x;
+    float xMax = 3 - modelRadius * modelScale.x;
+    float yMin = -3 + modelRadius * modelScale.y;
+    float yMax = 3 - modelRadius * modelScale.y;
 
     *v += GRAVITY * dt;
     *p += *v * dt;
 
-    if (v->z < 0.001 && p->z < 0.001 + radius) *v *= 0.9;
+    if (v->z < 0.001 && p->z < 0.001 + modelRadius) *v *= 0.9;
 
-    if (p->z < radius) {
-      p->z = radius;
+    if (p->z < modelRadius) {
+      p->z = modelRadius;
       v->z *= -0.95;
     }
     if (p->x < xMin) {

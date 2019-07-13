@@ -15,7 +15,7 @@ void SnowSystem::update(float dt) {
     // }
     positions[i] += velocities[i] * dt;
 
-    if (positions[i].z < radius * modelScale.z) {
+    if (positions[i].z < modelRadius * modelScale.z) {
       newParticle(i);
     }
   }

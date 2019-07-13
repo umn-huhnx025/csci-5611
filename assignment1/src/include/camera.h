@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 #include "glm/glm.hpp"
 
@@ -25,7 +25,7 @@ class Camera {
   glm::vec3 target;
   glm::vec3 direction;
   glm::vec3 right;
-  float moveSensitivity;
+  float moveSpeed;
   float lookSpeed;
 
   SDL_bool mouseLook;
